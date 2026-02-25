@@ -8,7 +8,7 @@ plugins {
 
 group = "com.example"
 version = "0.0.1-SNAPSHOT"
-description = "Demo project for Spring Boot"
+description = "Receipt Reimbursements"
 
 java {
 	toolchain {
