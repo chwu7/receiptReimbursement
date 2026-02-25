@@ -1,0 +1,17 @@
+# Environment variables — never commit
+.env
+
+# Gradle
+.gradle/
+build/
+backend/.gradle/
+backend/build/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db

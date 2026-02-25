@@ -1,11 +1,11 @@
-package com.example.demo
+package com.fraternity.reimbursement
 
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 
 @SpringBootApplication
-class DemoApplication
+class ReimbursementApplication
 
 fun main(args: Array<String>) {
-	runApplication<DemoApplication>(*args)
+	runApplication<ReimbursementApplication>(*args)
 }
