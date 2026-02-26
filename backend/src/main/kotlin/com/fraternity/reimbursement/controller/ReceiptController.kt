@@ -26,9 +26,9 @@ class ReceiptController {
     fun submitReimbursement(
         @RequestPart("receipt") receipt: MultipartFile,
         @Valid @RequestPart("request") request: SubmitReimbursementRequest
-        ): ResponseEntity<Map<String, String>>  // TODO: SubmitReimbursementRequest in dto (data transfer object)  
+        ): ResponseEntity<ReimbursementResponse>  // TODO: SubmitReimbursementRequest in dto (data transfer object)  
         {
-        // TODO: upload receipt to S3, save submission to DB
+        // TODO: upload receipt to S3, save submission to DB (do that in S3Service and ReimbursementService)
         return ResponseEntity.ok(mapOf("status" to "received"))
     }
 
