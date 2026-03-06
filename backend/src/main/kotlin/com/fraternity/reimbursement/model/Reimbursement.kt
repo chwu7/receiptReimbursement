@@ -1,6 +1,7 @@
 package com.fraternity.reimbursement.model
 
 import jakarta.persistence.*
+import java.math.BigDecimal
 import java.time.Instant
 import java.util.UUID
 
@@ -9,41 +10,59 @@ import java.util.UUID
 class Reimbursement(
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    val id: UUID? = null,
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    val id: Long? = null,
 
-    @Column(nullable = false)
+    @Column(name = "form_id", nullable = false, updatable = false)
+    val formId: UUID = UUID.randomUUID(),
+
+    @Column(name = "user_id", nullable = false)
+    val userId: Long = 0,
+
+    @Column(name = "full_name", nullable = false)
     val fullName: String = "",
-
-    @Column(nullable = false, columnDefinition = "TEXT")
-    val message: String = "",
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     val category: ReimbursementCategory = ReimbursementCategory.OTHER,
 
-    @Column(nullable = false)
+    @Column(columnDefinition = "TEXT")
+    val message: String? = null,
+
+    @Column(nullable = false, precision = 10, scale = 2)
+    val amount: BigDecimal = BigDecimal.ZERO,
+
+    @Column(name = "receipt_r2_key", nullable = false, length = 512)
+    val receiptR2Key: String = "",
+
+    @Column(name = "receipt_url", nullable = false)
     val receiptUrl: String = "",
 
-    @Column(nullable = false)
+    @Column(name = "receipt_key", nullable = false)
     val receiptKey: String = "",
 
-    @Column
+    @Column(name = "receipt_establishment")
     val receiptEstablishment: String? = null,
 
-    @Column
+    @Column(name = "receipt_date")
     val receiptDate: String? = null,
 
-    @Column
+    @Column(name = "receipt_total")
     val receiptTotal: Double? = null,
 
-    @Column
+    @Column(name = "receipt_currency")
     val receiptCurrency: String? = null,
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     val status: ReimbursementStatus = ReimbursementStatus.PENDING,
 
-    @Column(nullable = false, updatable = false)
+    @Column(name = "submitted_at", nullable = false, updatable = false)
+    val submittedAt: Instant = Instant.now(),
+
+    @Column(name = "reviewed_at")
+    val reviewedAt: Instant? = null,
+
+    @Column(name = "created_at", nullable = false, updatable = false)
     val createdAt: Instant = Instant.now()
 )

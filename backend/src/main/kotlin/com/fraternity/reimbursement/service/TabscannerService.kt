@@ -55,7 +55,7 @@ class TabscannerService(
             Thread.sleep(props.pollIntervalMs)
 
             val response = tabscannerRestClient.get()
-                .uri("/result/{token}", token)
+                .uri("https://api.tabscanner.com/api/result/{token}", token)
                 .retrieve()
                 .body(TabscannerResultResponse::class.java)
                 ?: throw TabscannerException("No response from Tabscanner /result endpoint")
