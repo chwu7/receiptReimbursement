@@ -1,4 +1,4 @@
-package com.fraternity.reimbursements.dto
+package com.fraternity.reimbursement.dto
 
 import com.fraternity.reimbursement.model.ReimbursementCategory
 

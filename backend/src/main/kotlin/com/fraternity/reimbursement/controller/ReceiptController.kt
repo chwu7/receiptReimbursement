@@ -1,6 +1,11 @@
 package com.fraternity.reimbursement.controller
 
+import com.fraternity.reimbursement.dto.ReimbursementResponse
+import com.fraternity.reimbursement.dto.SubmitReimbursementRequest
 import com.fraternity.reimbursement.model.ReimbursementCategory
+import com.fraternity.reimbursement.service.ReimbursementService
+import com.fraternity.reimbursement.service.TabscannerException
+import com.fraternity.reimbursement.service.TabscannerService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
@@ -13,7 +18,10 @@ import jakarta.validation.Valid
 
 @RestController
 @RequestMapping("/api/reimbursements")
-class ReceiptController {
+class ReceiptController(
+    private val tabscannerService: TabscannerService,
+    private val reimbursementService: ReimbursementService
+) {
 
     @GetMapping("/form")
     fun getSubmissionForm(): ResponseEntity<Map<String, Any>> {
@@ -22,18 +30,29 @@ class ReceiptController {
         ))
     }
 
+    @PostMapping("/validate-receipt")
+    fun validateReceipt(
+        @RequestPart("receipt") receipt: MultipartFile
+    ): ResponseEntity<Any> {
+        return try {
+            val result = tabscannerService.processReceipt(receipt)
+            ResponseEntity.ok(result)
+        } catch (e: TabscannerException) {
+            ResponseEntity.badRequest().body(mapOf("error" to e.message))
+        }
+    }
+
     @PostMapping
     fun submitReimbursement(
         @RequestPart("receipt") receipt: MultipartFile,
         @Valid @RequestPart("request") request: SubmitReimbursementRequest
-        ): ResponseEntity<ReimbursementResponse>  // TODO: SubmitReimbursementRequest in dto (data transfer object)  
-        {
-        // TODO: upload receipt to R2, save submission to DB (do that in R2Service and ReimbursementService)
-        return ResponseEntity.ok(mapOf("status" to "received"))
+    ): ResponseEntity<ReimbursementResponse> {
+        val response = reimbursementService.submitReimbursement(request, receipt)
+        return ResponseEntity.ok(response)
     }
 
-    @GetMapping()
+    @GetMapping
     fun getMySubmissions(): ResponseEntity<List<ReimbursementResponse>> {
-        return ResponseEntity.ok(emptyList())
+        return ResponseEntity.ok(reimbursementService.getAllSubmissions())
     }
 }

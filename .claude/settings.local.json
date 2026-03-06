@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "WebFetch(domain:claude.ai)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(psql:*)",
+      "Bash(PGPASSWORD=1234 psql:*)",
+      "WebFetch(domain:docs.tabscanner.com)",
+      "Bash(./gradlew compileKotlin:*)"
     ]
   }
 }
