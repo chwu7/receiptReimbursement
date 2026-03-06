@@ -28,7 +28,7 @@ class ReceiptController {
         @Valid @RequestPart("request") request: SubmitReimbursementRequest
         ): ResponseEntity<ReimbursementResponse>  // TODO: SubmitReimbursementRequest in dto (data transfer object)  
         {
-        // TODO: upload receipt to S3, save submission to DB (do that in S3Service and ReimbursementService)
+        // TODO: upload receipt to R2, save submission to DB (do that in R2Service and ReimbursementService)
         return ResponseEntity.ok(mapOf("status" to "received"))
     }
 

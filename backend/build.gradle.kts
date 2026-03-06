@@ -32,7 +32,7 @@ dependencies {
 	// Swagger / OpenAPI docs
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.1")
 
-	// AWS S3
+	// Cloudflare R2 (S3-compatible)
 	implementation("software.amazon.awssdk:s3:2.42.0")
 	implementation("software.amazon.awssdk:url-connection-client:2.42.0")
 
