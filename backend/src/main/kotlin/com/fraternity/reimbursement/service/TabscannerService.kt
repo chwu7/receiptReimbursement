@@ -60,26 +60,27 @@ class TabscannerService(
                 .body(TabscannerResultResponse::class.java)
                 ?: throw TabscannerException("No response from Tabscanner /result endpoint")
 
-            log.debug("Poll attempt {} for token={}, status_code={}", attempt + 1, token, response.statusCode)
+            log.info("Poll attempt {} for token={}, status={}, status_code={}", attempt + 1, token, response.status, response.statusCode)
 
-            when (response.statusCode) {
-                202 -> {
-                    val result = response.result
-                        ?: throw TabscannerException("Result was 202 but no result body returned")
-                    return ReceiptValidationResult(
-                        establishment = result.establishment,
-                        date = result.dateISO ?: result.date,
-                        total = result.total,
-                        subTotal = result.subTotal,
-                        tax = result.tax,
-                        currency = result.currency,
-                        lineItems = result.lineItems,
-                        totalConfidence = result.totalConfidence
-                    )
-                }
-                301 -> log.debug("Result not yet available, continuing to poll...")
-                else -> throw TabscannerException("Tabscanner polling error: status_code=${response.statusCode}")
+            if (response.result != null) {
+                val result = response.result
+                return ReceiptValidationResult(
+                    establishment = result.establishment,
+                    date = result.dateISO ?: result.date,
+                    total = result.total,
+                    subTotal = result.subTotal,
+                    tax = result.tax,
+                    currency = result.currency,
+                    lineItems = result.lineItems,
+                    totalConfidence = result.totalConfidence
+                )
             }
+
+            if (response.status == "failed") {
+                throw TabscannerException("Tabscanner processing failed: status_code=${response.statusCode}")
+            }
+
+            log.debug("Result not yet available, continuing to poll...")
         }
         throw TabscannerException("Tabscanner polling timed out after ${props.maxPollAttempts} attempts")
     }

@@ -47,14 +47,25 @@
 
         .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
         .badge-pending { background: #fef3c7; color: #92400e; }
+        .badge-verified { background: #dbeafe; color: #1e40af; }
         .badge-approved { background: #d1fae5; color: #065f46; }
         .badge-denied { background: #fee2e2; color: #991b1b; }
 
         .submissions-list { margin-top: 16px; }
         .submission-item { background: #fff; border-radius: 8px; padding: 16px; margin-bottom: 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+            box-shadow: 0 1px 3px rgba(0,0,0,.1); cursor: pointer; transition: box-shadow .15s; }
+        .submission-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,.15); }
         .submission-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
         .meta-row { font-size: 13px; color: #666; margin-top: 4px; }
+        .status-controls { margin-top: 12px; padding-top: 12px; border-top: 1px solid #eee; display: none; }
+        .submission-item.expanded .status-controls { display: block; }
+        .status-btn { border: none; padding: 6px 16px; border-radius: 6px; font-size: 13px;
+            font-weight: 600; cursor: pointer; margin-right: 8px; }
+        .status-btn:disabled { opacity: .5; cursor: not-allowed; }
+        .status-btn-pending { background: #fef3c7; color: #92400e; }
+        .status-btn-verified { background: #dbeafe; color: #1e40af; }
+        .status-btn-approved { background: #d1fae5; color: #065f46; }
+        .status-btn-denied { background: #fee2e2; color: #991b1b; }
     </style>
 </head>
 <body>
@@ -80,6 +91,10 @@
             <div class="form-group">
                 <label for="message">Description</label>
                 <textarea id="message" placeholder="What was this expense for?" required></textarea>
+            </div>
+            <div class="form-group">
+                <label for="paymentMethod">Preferred Payment Method</label>
+                <input type="text" id="paymentMethod" placeholder="e.g. Zelle, (123) 456-7890" required>
             </div>
             <div class="form-group">
                 <label for="receipt">Receipt Image (JPG/PNG)</label>
@@ -122,7 +137,7 @@
                 return;
             }
             container.innerHTML = data.map(s => `
-                <div class="submission-item">
+                <div class="submission-item" onclick="toggleExpand(this)">
                     <div class="submission-header">
                         <strong>${esc(s.fullName)}</strong>
                         <span class="badge badge-${s.status.toLowerCase()}">${s.status}</span>
@@ -131,8 +146,15 @@
                     <div class="meta-row">
                         ${s.category.replace(/_/g, ' ')} &middot;
                         $${s.amount.toFixed(2)} &middot;
-                        ${s.receiptEstablishment || 'Unknown'} &middot;
+                        ${esc(s.paymentMethod)} &middot;
                         ${new Date(s.createdAt).toLocaleDateString()}
+                    </div>
+                    <div class="status-controls">
+                        <span style="font-weight:600;font-size:13px;margin-right:12px;">Change status:</span>
+                        ${['PENDING','VERIFIED','APPROVED','DENIED'].map(st =>
+                            `<button class="status-btn status-btn-${st.toLowerCase()}" ${s.status === st ? 'disabled' : ''}
+                                onclick="event.stopPropagation(); updateStatus(${s.id}, '${st}')">${st}</button>`
+                        ).join('')}
                     </div>
                 </div>
             `).join('');
@@ -156,7 +178,8 @@
             fullName: document.getElementById('fullName').value,
             amount: parseFloat(document.getElementById('amount').value),
             message: document.getElementById('message').value,
-            category: document.getElementById('category').value
+            category: document.getElementById('category').value,
+            paymentMethod: document.getElementById('paymentMethod').value
         };
         formData.append('request', new Blob([JSON.stringify(requestData)], { type: 'application/json' }));
 
@@ -176,6 +199,7 @@
                         <dt>ID</dt><dd>${esc(data.id)}</dd>
                         <dt>Form ID</dt><dd>${esc(data.formId)}</dd>
                         <dt>Amount</dt><dd>$${data.amount.toFixed(2)}</dd>
+                        <dt>Payment</dt><dd>${esc(data.paymentMethod)}</dd>
                         <dt>Status</dt><dd><span class="badge badge-${data.status.toLowerCase()}">${data.status}</span></dd>
                         <dt>Receipt URL</dt><dd><a href="${esc(data.receiptUrl)}" target="_blank">View in R2</a></dd>
                         <dt>Establishment</dt><dd>${esc(data.receiptEstablishment || 'N/A')}</dd>
@@ -183,7 +207,6 @@
                         <dt>Total</dt><dd>${data.receiptTotal != null ? '$' + data.receiptTotal.toFixed(2) : 'N/A'}</dd>
                         <dt>Subtotal</dt><dd>${data.receiptSubTotal != null ? '$' + data.receiptSubTotal.toFixed(2) : 'N/A'}</dd>
                         <dt>Tax</dt><dd>${data.receiptTax != null ? '$' + data.receiptTax.toFixed(2) : 'N/A'}</dd>
-                        <dt>Currency</dt><dd>${esc(data.receiptCurrency || 'N/A')}</dd>
                         <dt>Confidence</dt><dd>${data.receiptTotalConfidence != null ? (data.receiptTotalConfidence * 100).toFixed(1) + '%' : 'N/A'}</dd>
                     </dl>
                     ${renderLineItems(data.receiptLineItems)}
@@ -215,6 +238,28 @@
                 </tbody>
             </table>
         `;
+    }
+
+    function toggleExpand(el) {
+        el.classList.toggle('expanded');
+    }
+
+    async function updateStatus(id, status) {
+        try {
+            const res = await fetch(`${API}/${id}/status`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status })
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                alert('Failed to update status: ' + (err.error || res.statusText));
+                return;
+            }
+            loadSubmissions();
+        } catch (e) {
+            alert('Network error: ' + e.message);
+        }
     }
 
     function esc(s) {

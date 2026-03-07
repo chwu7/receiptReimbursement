@@ -6,5 +6,6 @@ data class SubmitReimbursementRequest(
     val fullName: String,
     val message: String,
     val category: ReimbursementCategory,
-    val amount: Double
+    val amount: Double,
+    val paymentMethod: String
 )

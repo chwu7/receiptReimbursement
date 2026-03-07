@@ -32,6 +32,9 @@ class Reimbursement(
     @Column(nullable = false, precision = 10, scale = 2)
     val amount: BigDecimal = BigDecimal.ZERO,
 
+    @Column(name = "payment_method", nullable = false)
+    val paymentMethod: String = "",
+
     @Column(name = "receipt_r2_key", nullable = false, length = 512)
     val receiptR2Key: String = "",
 
@@ -49,9 +52,6 @@ class Reimbursement(
 
     @Column(name = "receipt_total")
     val receiptTotal: Double? = null,
-
-    @Column(name = "receipt_currency")
-    val receiptCurrency: String? = null,
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

@@ -4,9 +4,11 @@ import com.fraternity.reimbursement.dto.ReceiptValidationResult
 import com.fraternity.reimbursement.dto.ReimbursementResponse
 import com.fraternity.reimbursement.dto.SubmitReimbursementRequest
 import com.fraternity.reimbursement.model.Reimbursement
+import com.fraternity.reimbursement.model.ReimbursementStatus
 import com.fraternity.reimbursement.repository.ReimbursementRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.multipart.MultipartFile
 import java.math.BigDecimal
 
@@ -31,6 +33,14 @@ class ReimbursementService(
             null
         }
 
+        val status = if (validation?.total != null &&
+            BigDecimal.valueOf(validation.total).compareTo(BigDecimal.valueOf(request.amount)) == 0
+        ) {
+            ReimbursementStatus.VERIFIED
+        } else {
+            ReimbursementStatus.PENDING
+        }
+
         val reimbursement = reimbursementRepository.save(
             Reimbursement(
                 userId = 1, // TODO: replace with authenticated user id
@@ -38,17 +48,26 @@ class ReimbursementService(
                 message = request.message,
                 category = request.category,
                 amount = BigDecimal.valueOf(request.amount),
+                paymentMethod = request.paymentMethod,
                 receiptR2Key = upload.key,
                 receiptUrl = upload.url,
                 receiptKey = upload.key,
                 receiptEstablishment = validation?.establishment,
                 receiptDate = validation?.date,
                 receiptTotal = validation?.total,
-                receiptCurrency = validation?.currency
+                status = status
             )
         )
 
         return toResponse(reimbursement, validation)
+    }
+
+    @Transactional
+    fun updateStatus(id: Long, status: ReimbursementStatus): ReimbursementResponse {
+        val updated = reimbursementRepository.updateStatus(id, status)
+        if (updated == 0) throw IllegalArgumentException("Reimbursement not found: $id")
+        val reimbursement = reimbursementRepository.findById(id).get()
+        return toResponse(reimbursement, null)
     }
 
     fun getAllSubmissions(): List<ReimbursementResponse> =
@@ -62,6 +81,7 @@ class ReimbursementService(
             message = r.message,
             category = r.category.name,
             amount = r.amount.toDouble(),
+            paymentMethod = r.paymentMethod,
             receiptUrl = r.receiptUrl,
             status = r.status.name,
             receiptEstablishment = validation?.establishment ?: r.receiptEstablishment,
@@ -69,7 +89,6 @@ class ReimbursementService(
             receiptSubTotal = validation?.subTotal,
             receiptTax = validation?.tax,
             receiptDate = validation?.date ?: r.receiptDate,
-            receiptCurrency = validation?.currency ?: r.receiptCurrency,
             receiptLineItems = validation?.lineItems,
             receiptTotalConfidence = validation?.totalConfidence,
             createdAt = r.createdAt.toString()
