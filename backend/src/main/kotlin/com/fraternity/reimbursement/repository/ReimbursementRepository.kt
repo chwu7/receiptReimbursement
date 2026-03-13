@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.Query
 
 interface ReimbursementRepository : JpaRepository<Reimbursement, Long> {
 
+    fun findAllByOrderByCreatedAtDesc(): List<Reimbursement>
+
     @Modifying
     @Query("UPDATE Reimbursement r SET r.status = :status, r.reviewedAt = CURRENT_TIMESTAMP WHERE r.id = :id")
     fun updateStatus(id: Long, status: ReimbursementStatus): Int

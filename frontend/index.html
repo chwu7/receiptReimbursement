@@ -11,6 +11,43 @@
         h1 { margin-bottom: 24px; }
         h2 { margin: 32px 0 16px; border-bottom: 2px solid #ddd; padding-bottom: 8px; }
 
+        /* Header / Navbar */
+        .site-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .site-header h1 { margin-bottom: 0; }
+        .auth-area { position: relative; }
+        .auth-btn {
+            background: #2563eb; color: #fff; border: none; padding: 8px 20px;
+            border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer;
+        }
+        .auth-btn:hover { background: #1d4ed8; }
+        .auth-btn-outline {
+            background: transparent; color: #2563eb; border: 1px solid #2563eb;
+            padding: 8px 20px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer;
+        }
+        .auth-btn-outline:hover { background: #eff6ff; }
+        .user-info { display: flex; align-items: center; gap: 12px; }
+        .user-name { font-weight: 600; font-size: 14px; color: #333; }
+
+        /* Login Dropdown */
+        .login-dropdown {
+            display: none; position: absolute; top: calc(100% + 8px); right: 0;
+            background: #fff; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,.15);
+            padding: 20px; width: 300px; z-index: 100;
+        }
+        .login-dropdown.open { display: block; }
+        .login-dropdown .form-group { margin-bottom: 12px; }
+        .login-dropdown .form-group label { display: block; font-weight: 600; margin-bottom: 4px; font-size: 13px; }
+        .login-dropdown .form-group input {
+            width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px;
+        }
+        .login-dropdown .login-submit {
+            width: 100%; background: #2563eb; color: #fff; border: none; padding: 10px;
+            border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer;
+        }
+        .login-dropdown .login-submit:hover { background: #1d4ed8; }
+        .login-dropdown .login-submit:disabled { background: #93c5fd; cursor: not-allowed; }
+        .login-error { color: #dc2626; font-size: 13px; margin-bottom: 8px; display: none; }
+
         .form-section { background: #fff; border-radius: 8px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
         .form-group { margin-bottom: 16px; }
         .form-group label { display: block; font-weight: 600; margin-bottom: 4px; }
@@ -66,11 +103,42 @@
         .status-btn-verified { background: #dbeafe; color: #1e40af; }
         .status-btn-approved { background: #d1fae5; color: #065f46; }
         .status-btn-denied { background: #fee2e2; color: #991b1b; }
+
+        .admin-section { display: none; }
+        .admin-section.visible { display: block; }
     </style>
 </head>
 <body>
 <div class="container">
-    <h1>Receipt Reimbursement</h1>
+    <div class="site-header">
+        <h1>Receipt Reimbursement</h1>
+        <div class="auth-area">
+            <!-- Logged-out state -->
+            <div id="loginBtn">
+                <button class="auth-btn" onclick="toggleLoginDropdown()">Login</button>
+            </div>
+            <!-- Logged-in state -->
+            <div id="userMenu" style="display:none;">
+                <div class="user-info">
+                    <span class="user-name" id="userName"></span>
+                    <button class="auth-btn-outline" onclick="logout()">Logout</button>
+                </div>
+            </div>
+            <!-- Login dropdown -->
+            <div class="login-dropdown" id="loginDropdown">
+                <div class="form-group">
+                    <label for="loginEmail">Email</label>
+                    <input type="email" id="loginEmail" placeholder="you@example.com">
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" placeholder="Password">
+                </div>
+                <div class="login-error" id="loginError"></div>
+                <button class="login-submit" id="loginSubmitBtn" onclick="handleLogin()">Sign In</button>
+            </div>
+        </div>
+    </div>
 
     <div class="form-section">
         <form id="reimbursementForm">
@@ -106,15 +174,140 @@
 
     <div id="resultArea"></div>
 
-    <h2>Past Submissions</h2>
-    <div id="submissionsList" class="submissions-list">
-        <p style="color:#888;">Loading...</p>
+    <div id="adminSection" class="admin-section">
+        <h2>Past Submissions</h2>
+        <div id="submissionsList" class="submissions-list">
+            <p style="color:#888;">Loading...</p>
+        </div>
     </div>
 </div>
 
 <script>
     const API = '/api/reimbursements';
 
+    // --- Auth state ---
+    function getToken() { return localStorage.getItem('jwt_token'); }
+    function getUser() {
+        const u = localStorage.getItem('jwt_user');
+        return u ? JSON.parse(u) : null;
+    }
+    function setAuth(token, user) {
+        localStorage.setItem('jwt_token', token);
+        localStorage.setItem('jwt_user', JSON.stringify(user));
+    }
+    function clearAuth() {
+        localStorage.removeItem('jwt_token');
+        localStorage.removeItem('jwt_user');
+    }
+
+    function authHeaders() {
+        const token = getToken();
+        return token ? { 'Authorization': 'Bearer ' + token } : {};
+    }
+
+    // --- UI state management ---
+    function updateAuthUI() {
+        const user = getUser();
+        const token = getToken();
+        const loginBtn = document.getElementById('loginBtn');
+        const userMenu = document.getElementById('userMenu');
+        const adminSection = document.getElementById('adminSection');
+        const loginDropdown = document.getElementById('loginDropdown');
+        const submitBtn = document.getElementById('submitBtn');
+
+        if (token && user) {
+            loginBtn.style.display = 'none';
+            userMenu.style.display = 'block';
+            document.getElementById('userName').textContent = user.username || user.email;
+            loginDropdown.classList.remove('open');
+            // Enable submit for logged-in users
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Submit Reimbursement';
+            // Show admin section only for admins
+            if (user.role === 'ADMIN') {
+                adminSection.classList.add('visible');
+                loadSubmissions();
+            } else {
+                adminSection.classList.remove('visible');
+            }
+        } else {
+            loginBtn.style.display = 'block';
+            userMenu.style.display = 'none';
+            adminSection.classList.remove('visible');
+            // Disable submit for logged-out users
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Not Available';
+        }
+    }
+
+    function toggleLoginDropdown() {
+        document.getElementById('loginDropdown').classList.toggle('open');
+        document.getElementById('loginError').style.display = 'none';
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+        const dropdown = document.getElementById('loginDropdown');
+        const authArea = document.querySelector('.auth-area');
+        if (!authArea.contains(e.target)) {
+            dropdown.classList.remove('open');
+        }
+    });
+
+    // Allow Enter key to submit login
+    document.getElementById('loginPassword').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') handleLogin();
+    });
+
+    async function handleLogin() {
+        const email = document.getElementById('loginEmail').value.trim();
+        const password = document.getElementById('loginPassword').value;
+        const errorEl = document.getElementById('loginError');
+        const btn = document.getElementById('loginSubmitBtn');
+
+        if (!email || !password) {
+            errorEl.textContent = 'Please enter email and password.';
+            errorEl.style.display = 'block';
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = 'Signing in...';
+        errorEl.style.display = 'none';
+
+        try {
+            const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            const data = await res.json();
+
+            if (!res.ok) {
+                errorEl.textContent = data.error || 'Invalid credentials.';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            setAuth(data.token, data.user);
+            document.getElementById('loginEmail').value = '';
+            document.getElementById('loginPassword').value = '';
+            updateAuthUI();
+        } catch (e) {
+            errorEl.textContent = 'Network error. Please try again.';
+            errorEl.style.display = 'block';
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Sign In';
+        }
+    }
+
+    function logout() {
+        clearAuth();
+        updateAuthUI();
+    }
+
+    // --- Categories (public) ---
     async function loadCategories() {
         try {
             const res = await fetch(API + '/form');
@@ -127,9 +320,15 @@
         }
     }
 
+    // --- Submissions (admin only) ---
     async function loadSubmissions() {
         try {
-            const res = await fetch(API);
+            const res = await fetch(API, { headers: authHeaders() });
+            if (res.status === 401 || res.status === 403) {
+                clearAuth();
+                updateAuthUI();
+                return;
+            }
             const data = await res.json();
             const container = document.getElementById('submissionsList');
             if (!data.length) {
@@ -163,6 +362,7 @@
         }
     }
 
+    // --- Submit reimbursement (public) ---
     document.getElementById('reimbursementForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const btn = document.getElementById('submitBtn');
@@ -184,7 +384,7 @@
         formData.append('request', new Blob([JSON.stringify(requestData)], { type: 'application/json' }));
 
         try {
-            const res = await fetch(API, { method: 'POST', body: formData });
+            const res = await fetch(API, { method: 'POST', headers: authHeaders(), body: formData });
             const data = await res.json();
 
             if (!res.ok) {
@@ -213,12 +413,17 @@
                 </div>
             `;
             document.getElementById('reimbursementForm').reset();
-            loadSubmissions();
+            if (getToken()) loadSubmissions();
         } catch (err) {
             resultArea.innerHTML = `<div class="result-card error"><strong>Network error:</strong> ${esc(err.message)}</div>`;
         } finally {
-            btn.disabled = false;
-            btn.textContent = 'Submit Reimbursement';
+            if (getToken()) {
+                btn.disabled = false;
+                btn.textContent = 'Submit Reimbursement';
+            } else {
+                btn.disabled = true;
+                btn.textContent = 'Not Available';
+            }
         }
     });
 
@@ -248,9 +453,15 @@
         try {
             const res = await fetch(`${API}/${id}/status`, {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...authHeaders() },
                 body: JSON.stringify({ status })
             });
+            if (res.status === 401 || res.status === 403) {
+                alert('Session expired or insufficient permissions. Please log in again.');
+                clearAuth();
+                updateAuthUI();
+                return;
+            }
             if (!res.ok) {
                 const err = await res.json();
                 alert('Failed to update status: ' + (err.error || res.statusText));
@@ -269,8 +480,9 @@
         return d.innerHTML;
     }
 
+    // --- Init ---
     loadCategories();
-    loadSubmissions();
+    updateAuthUI();
 </script>
 </body>
 </html>

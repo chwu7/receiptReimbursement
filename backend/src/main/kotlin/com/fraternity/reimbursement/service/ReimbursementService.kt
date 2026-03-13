@@ -71,7 +71,7 @@ class ReimbursementService(
     }
 
     fun getAllSubmissions(): List<ReimbursementResponse> =
-        reimbursementRepository.findAll().map { toResponse(it, null) }
+        reimbursementRepository.findAllByOrderByCreatedAtDesc().map { toResponse(it, null) }
 
     private fun toResponse(r: Reimbursement, validation: ReceiptValidationResult?): ReimbursementResponse =
         ReimbursementResponse(
